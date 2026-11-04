@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Environments and secrets
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local datasets and generated results
+data/raw/
+data/processed/
+outputs/
+
+# MLflow
+mlruns/
+mlartifacts/
+mlflow.db
+mlflow.db-*
+*.db-journal
+
+# Operating system and editor
+.DS_Store
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
