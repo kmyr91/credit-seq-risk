@@ -114,3 +114,26 @@ Affirm Engineering, *Learning Richer Credit Representations with Transformers at
 https://tech.affirm.com/learning-richer-credit-representations-with-transformers-at-affirm-c774e7c1cea6
 
 This is an independent educational project and is not affiliated with Affirm.
+
+## API serving
+
+Start the local inference service:
+
+    python -m uvicorn src.api.main:app --reload
+
+Open http://127.0.0.1:8000/docs for interactive documentation.
+
+Available endpoints:
+
+- GET /health
+- GET /features
+- POST /predict
+- POST /predict/history
+
+The API loads a locally saved LightGBM model.
+Model artifacts are not committed to Git.
+
+## Continuous integration
+
+GitHub Actions runs automated tests on pushes and pull requests to main.
+Tests requiring local UCI data are skipped when that data is unavailable.
