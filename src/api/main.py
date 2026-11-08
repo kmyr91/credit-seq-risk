@@ -37,10 +37,10 @@ from src.features.online import (
 # --------------------------------------------------
 
 DEFAULT_MODEL_PATH = Path(
-    "outputs/uci/stacking/lightgbm_full_control_model.joblib"
+    "outputs/uci/lightgbm_fair/model.joblib"
 )
 
-MODEL_NAME = "lightgbm_full_control"
+MODEL_NAME = "lightgbm_final_12_features"
 Numeric = StrictInt | StrictFloat
 
 logger = logging.getLogger("credit_risk")

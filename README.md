@@ -1,139 +1,96 @@
 # Credit Sequence Risk
 
-An end-to-end machine learning engineering project for credit-default prediction, inspired by Affirm's work on learned credit representations.
+A machine learning project exploring whether sequence models improve credit-default prediction over gradient-boosted trees.
 
-## Research question
+Inspired by [Affirm's work on credit representations](https://tech.affirm.com/learning-richer-credit-representations-with-transformers-at-affirm-c774e7c1cea6).
 
-Do learned sequence representations improve credit-default prediction beyond a strong gradient-boosted tree baseline?
+## Overview
 
-This project compares engineered financial features, recurrent neural networks, and leakage-controlled GRU prediction stacking.
+I worked with the [UCI credit-default dataset](https://doi.org/10.24432/C55S3H): 30,000 customers, six months of payment history, and a binary next-month default target.
 
-**Current finding:** On the UCI credit-default dataset, GRU stacking did not provide a statistically detectable improvement over LightGBM.
+The project uses PySpark for feature engineering, LightGBM and PyTorch for modeling, MLflow for experiment tracking, and FastAPI for inference.
 
-## Dataset
+## Results
 
-UCI Default of Credit Card Clients  
-https://doi.org/10.24432/C55S3H
+The main question was whether GRU-based sequence representations could improve a LightGBM baseline.
 
-- 30,000 customers
-- Six monthly observations per customer
-- 180,000 records in long format
-- Binary next-month default target
-- Customer-disjoint stratified split: 70% training, 15% validation, 15% test
+In the original stacking experiment, GRU + LightGBM achieved an ROC-AUC of 0.78044 versus 0.78042 for LightGBM alone. The paired bootstrap confidence interval included zero.
 
-The final test set has not yet been evaluated.
+I then compared two LightGBM models with early stopping performed inside the training data:
 
-Dataset limitations: one account per customer, six fixed monthly observations, and no time-to-event or censoring information.
+| Model | Validation ROC-AUC | PR-AUC |
+|---|---:|---:|
+| LightGBM, 12 engineered features | 0.7801 | 0.5587 |
+| LightGBM, 30 features | 0.7803 | 0.5554 |
 
-## Models
+The extra monthly features did not provide a meaningful improvement, so I kept the simpler model.
 
-| Model | Validation ROC-AUC | PR-AUC | Brier |
-|---|---:|---:|---:|
-| LightGBM baseline | 0.77808 | 0.55283 | 0.13608 |
-| Improved LightGBM | 0.78042 | 0.55748 | 0.13561 |
-| Standalone GRU | 0.76530 | 0.53840 | 0.13760 |
-| GRU + LightGBM stacking | 0.78044 | 0.55656 | 0.13548 |
+**Final held-out test results (4,500 customers):**
 
-The final two LightGBM models in the stacking comparison use the same 21,000 training customers.
+| Metric | Result |
+|---|---:|
+| ROC-AUC | 0.7815 |
+| PR-AUC | 0.5548 |
+| Brier score | 0.1345 |
+| Log loss | 0.4285 |
 
-See [Experimental results](docs/experiments.md) for methodology, uncertainty estimates, and limitations.
+The test ROC-AUC 95% bootstrap confidence interval was [0.7646, 0.7979].
 
-## Project structure
+The raw model was reasonably well calibrated on validation data. Platt scaling gave negligible improvement.
 
-```text
-src/
-  data/          Data validation and preparation
-  features/      PySpark customer feature engineering
-  models/        LightGBM, GRU, OOF stacking
-  evaluation/    Statistical model comparison
-tests/           Automated tests
-docs/            Experimental and architectural documentation
-experiments/     Archived exploratory implementations
-data/            Local datasets (not tracked by Git)
-outputs/         Local models and predictions (not tracked by Git)
-```
+## Underwriting decisions
 
-## Training workflow
+I also explored a simple approval policy based on predicted default probability.
 
-Run commands from the project root in the configured Python environment.
+Under hypothetical assumptions of $100 revenue for a performing loan and $800 loss for a defaulted loan, the break-even default probability is 11.11%.
+
+On policy-validation data, this threshold approved 31.9% of customers, with a 7.5% observed default rate among approved customers.
+
+This corrected economic policy was developed after the original held-out test evaluation, so these policy results are **validation-only**. The original test run used a superseded 12.5% policy with different revenue assumptions.
+
+These calculations illustrate decision economics, not actual lending profitability.
+
+## Engineering
+
+- PySpark feature engineering and customer-level train/validation/test splits
+- LightGBM, PyTorch GRU, and out-of-fold stacking
+- Probability calibration and bootstrap evaluation
+- FastAPI inference with model versioning and prediction IDs
+- Feature drift and delayed-outcome monitoring
+- Automated testing and GitHub Actions CI
+
+## Running the project
+
+Use Python 3.11, install the dependencies from `pyproject.toml`, and place the UCI Excel dataset in `data/raw/`.
 
 ```bash
 python -m src.data.prepare_uci
 python -m src.features.build_features
-python -m src.models.train_lightgbm
-python -m src.data.prepare_sequences
-python -m src.models.train_gru
-python -m src.models.train_gru_oof
-python -m src.models.train_stacked_lightgbm
-python -m src.evaluation.compare_models
+python -m src.models.train_lightgbm_fair
+python -m src.evaluation.calibration
+python -m src.evaluation.decision_economics_v2
 ```
 
-The raw UCI Excel file must first be placed in `data/raw/` as expected by the data preparation script.
+The final test was evaluated once; its existing saved results should be used rather than rerunning it to tune models or policies.
 
-PySpark requires a compatible Java runtime. The local setup used Java 17.
-
-The GRU encoder and LightGBM stacking stages run as separate processes.
-
-## Experiment tracking
-
-MLflow stores local experiments in `mlflow.db`.
-
-```bash
-mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
-```
-
-Open http://127.0.0.1:5000.
-
-## Testing
+Run the tests:
 
 ```bash
 python -m pytest -q
 ```
 
-## Design and methodological notes
+Start the API after training the final model:
 
-- Fit supervised model components on training data only.
-- Each GRU OOF prediction comes from an encoder that did not train on that customer's target.
-- GRU preprocessing scalers are fitted separately inside each training fold.
-- Validation metrics are not final test metrics.
-- Paired bootstrap intervals quantify sampling uncertainty for the current validation predictions, not variation across training runs.
-- GRU logit stacking is not a reproduction of Affirm's hierarchical Transformer embedding architecture.
+```bash
+python -m uvicorn src.api.main:app --reload
+```
 
-## Next engineering milestones
+API documentation: http://127.0.0.1:8000/docs
 
-- Expand automated testing and reproducibility.
-- Implement a production-style prediction API.
-- Add model validation, monitoring, and CI.
-- Simulate approval-rate and default-risk trade-offs.
-- Investigate richer, appropriately licensed longitudinal credit datasets.
+More details are in [docs/experiments.md](docs/experiments.md).
 
-## Reference
+## Limitations
 
-Affirm Engineering, *Learning Richer Credit Representations with Transformers at Affirm*:
+The dataset contains only six months of single-account history. Random customer splits do not measure future distribution shift, and the project does not solve reject inference or real-world lending profitability. Demographic attributes were excluded from model inputs, but fairness was not established.
 
-https://tech.affirm.com/learning-richer-credit-representations-with-transformers-at-affirm-c774e7c1cea6
-
-This is an independent educational project and is not affiliated with Affirm.
-
-## API serving
-
-Start the local inference service:
-
-    python -m uvicorn src.api.main:app --reload
-
-Open http://127.0.0.1:8000/docs for interactive documentation.
-
-Available endpoints:
-
-- GET /health
-- GET /features
-- POST /predict
-- POST /predict/history
-
-The API loads a locally saved LightGBM model.
-Model artifacts are not committed to Git.
-
-## Continuous integration
-
-GitHub Actions runs automated tests on pushes and pull requests to main.
-Tests requiring local UCI data are skipped when that data is unavailable.
+This is an independent educational project, not affiliated with Affirm.

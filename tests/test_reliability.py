@@ -54,7 +54,7 @@ def test_model_version_in_health_and_prediction(make_client):
 
         assert len(health["model_version"]) == 12
         assert result["model_version"] == health["model_version"]
-        assert result["model_name"] == "lightgbm_full_control"
+        assert result["model_name"] == "lightgbm_final_12_features"
 
 
 def test_unique_prediction_ids(make_client):

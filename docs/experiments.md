@@ -84,3 +84,39 @@ The result does not imply that neural embeddings cannot help on longer, multi-ac
 3. Build reusable inference, testing, monitoring, and decision-policy components.
 
 Historical disjoint-stage hybrid code is retained under `experiments/archive/`.
+
+## Final model and underwriting evaluation
+
+The original GRU-stacking comparison used validation during model development.
+It is separate from the final-model experiment.
+
+For the final experiment, early stopping was performed inside the 21,000
+training customers. The 12-feature LightGBM was selected over a 30-feature
+alternative using validation results.
+
+The 12-feature model achieved validation ROC-AUC 0.780054, PR-AUC 0.558738,
+and Brier score 0.135558.
+
+Platt calibration was fitted on half of the validation customers and
+evaluated on the other half. It offered negligible improvement, so the
+raw model probabilities were retained.
+
+One-time held-out test evaluation (4,500 customers):
+
+| Metric | Test result | Bootstrap 95% CI |
+|---|---:|---|
+| ROC-AUC | 0.781545 | [0.764608, 0.797920] |
+| PR-AUC | 0.554781 | [0.525224, 0.587370] |
+| Brier score | 0.134526 | [0.129660, 0.139145] |
+| Log loss | 0.428512 | [0.416073, 0.440195] |
+
+The original frozen test policy used a 12.5% threshold and assumed
+$100 revenue even on defaulted loans. This assumption was later revised.
+
+Under the revised illustrative economics, revenue is earned only when
+a loan performs. The break-even threshold becomes 11.11%. This revised
+policy was evaluated on validation data only, after the original test
+results were viewed. No revised-policy test performance is claimed.
+
+The data does not represent a prospective lending population, and the
+economic assumptions are hypothetical.
