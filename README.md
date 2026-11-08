@@ -73,6 +73,20 @@ python -m src.evaluation.decision_economics_v2
 
 The final test was evaluated once; its existing saved results should be used rather than rerunning it to tune models or policies.
 
+### Reproducing the model comparisons
+
+The GRU-stacking experiment and the 30-feature LightGBM baseline can be run with:
+
+```bash
+python -m src.data.prepare_sequences
+python -m src.models.train_gru_oof
+python -m src.models.train_stacked_lightgbm
+python -m src.evaluation.compare_models
+python -m src.models.train_lightgbm_raw
+```
+
+These are separate development experiments; the GRU comparison used an earlier validation protocol. The final test evaluation is not part of this workflow.
+
 Run the tests:
 
 ```bash

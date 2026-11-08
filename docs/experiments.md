@@ -75,7 +75,7 @@ The result does not imply that neural embeddings cannot help on longer, multi-ac
 - The current tabular baseline has not yet been expanded to include all appropriate raw monthly variables.
 - Stacking a scalar GRU logit is different from using learned multidimensional embeddings.
 - UCI does not support the hierarchical multi-account representation or AFT survival objective used by Affirm.
-- The final held-out test set is reserved for the final project evaluation.
+- The final held-out test set was evaluated once after model and policy selection.
 
 ## 7. Follow-up work
 
